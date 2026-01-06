@@ -1,0 +1,65 @@
+syntax = "proto3";
+package kvstore;
+
+// --- PUBLIC API: CLIENT TO SERVER ---
+
+service KVStore {
+  // A standard write request
+  rpc Put (PutRequest) returns (PutResponse);
+  
+  // A standard read request
+  rpc Get (GetRequest) returns (GetResponse);
+}
+
+message PutRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message PutResponse {
+  bool success = 1;
+  string leader_id = 2; // If we aren't the leader, tell the client who is.
+  string error = 3;
+}
+
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  optional string value = 1; // Optional in case the key doesn't exist.
+  string leader_id = 2;
+}
+
+// --- INTERNAL API: SERVER TO SERVER (RAFT) ---
+
+service RaftNetwork {
+  // Used by the leader to send log entries or heartbeats
+  rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);
+
+  // Used by candidates to gather votes during an election
+  rpc RequestVote (VoteRequest) returns (VoteResponse);
+}
+
+// These messages would wrap the specific data structures 
+// provided by your Raft library (like openraft or raft-rs).
+message AppendEntriesRequest {
+  string term = 1;
+  string leader_id = 2;
+  bytes log_data = 3; // The serialized KV operation
+}
+
+message AppendEntriesResponse {
+  uint64 term = 1;
+  bool success = 2;
+}
+
+message VoteRequest {
+  uint64 term = 1;
+  string candidate_id = 2;
+}
+
+message VoteResponse {
+  uint64 term = 1;
+  bool vote_granted = 2;
+}
